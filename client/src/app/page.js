@@ -50,13 +50,12 @@ export default function Home() {
             <nav className="fixed top-0 left-0 right-0 z-40 bg-primary-950/80 backdrop-blur-lg border-b border-primary-800">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-auto px-2 h-10 bg-gradient-to-br from-accent to-accent-dark rounded-lg flex items-center justify-center">
-                            <span className="text-primary-950 font-display font-bold text-xl">AIDY</span>
+                        <div className="w-auto px-2 h-10  rounded-lg flex items-center justify-center">
+                            <span className="text-accent font-display font-bold text-xl">MNARS</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-6">
                         <a href="/" className="text-primary-200 hover:text-accent transition-colors">Portfolio</a>
-                        <a href="/admin" className="btn-secondary text-sm py-2 px-4">Admin</a>
                     </div>
                 </div>
             </nav>
@@ -70,8 +69,7 @@ export default function Home() {
                         <span className="text-primary-200">Portfolio</span>
                     </h1>
                     <p className="text-primary-400 text-lg md:text-xl max-w-2xl mx-auto mb-12 animate-slide-up">
-                        Koleksi proyek arsitektur terbaik kami. Dari desain perumahan minimalis
-                        hingga ruang komersial yang memukau.
+                        Saya merupakan mahasiswa dari Universitas Negeri Semarang jurusan S1 Arsitektur
                     </p>
                 </div>
             </section>
@@ -159,7 +157,7 @@ export default function Home() {
             {/* Footer */}
             <footer className="border-t border-primary-800 py-8 px-6">
                 <div className="max-w-7xl mx-auto text-center text-primary-500">
-                    <p>&copy; 2025 AIDY Architecture. All rights reserved.</p>
+                    <p>&copy; 2025 <span className="text-accent">MNARS</span> Architecture. All rights reserved.</p>
                 </div>
             </footer>
 

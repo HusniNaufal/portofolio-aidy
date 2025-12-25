@@ -301,7 +301,8 @@ export default function AdminPage() {
                         </div>
                     ) : (
                         <div className="bg-white rounded-2xl border border-primary-200 shadow-sm overflow-hidden">
-                            <table className="w-full text-left border-collapse">
+                            {/* Desktop Table View */}
+                            <table className="w-full text-left border-collapse hidden md:table">
                                 <thead>
                                     <tr className="border-b border-primary-100 text-xs uppercase text-primary-500 font-medium tracking-wider bg-primary-50/50">
                                         <th className="px-6 py-4 font-normal">Project</th>
@@ -358,6 +359,50 @@ export default function AdminPage() {
                                     ))}
                                 </tbody>
                             </table>
+
+                            {/* Mobile Card View */}
+                            <div className="md:hidden divide-y divide-primary-100">
+                                {projects.map(project => (
+                                    <div key={project.id} className="p-4 flex flex-col gap-4">
+                                        <div className="flex items-start gap-4">
+                                            <div className="w-16 h-16 rounded-lg bg-primary-100 overflow-hidden flex-shrink-0">
+                                                {project.image_url ? (
+                                                    <img src={project.image_url.startsWith('http') ? project.image_url : `http://localhost:5000${project.image_url}`} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-primary-400">🏛️</div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-start">
+                                                    <h4 className="font-medium text-primary-900 truncate pr-2">{project.title}</h4>
+                                                    <span className="text-xs text-primary-400 whitespace-nowrap">
+                                                        {new Date(project.created_at).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-primary-500 line-clamp-2 mt-1 mb-2">{project.description}</p>
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary-100 text-primary-600 border border-primary-200">
+                                                    {project.category}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-2 pt-2 border-t border-primary-50">
+                                            <button
+                                                onClick={() => openModal(project)}
+                                                className="flex-1 py-2 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <span>✎</span> Edit
+                                            </button>
+                                            <button
+                                                onClick={() => setDeleteConfirm(project)}
+                                                className="flex-1 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <span>🗑️</span> Hapus
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>
