@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-primary-950 text-primary-100 font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-medium tracking-tight;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-accent text-primary-950 font-medium rounded-lg 
+           hover:bg-accent-light transition-all duration-300 
+           transform hover:scale-105 active:scale-95;
+  }
+  
+  .btn-secondary {
+    @apply px-6 py-3 border border-primary-600 text-primary-200 font-medium rounded-lg 
+           hover:bg-primary-800 hover:border-primary-500 transition-all duration-300;
+  }
+  
+  .btn-danger {
+    @apply px-4 py-2 bg-red-600/20 text-red-400 border border-red-600/50 rounded-lg
+           hover:bg-red-600/30 hover:border-red-500 transition-all duration-300;
+  }
+  
+  .card {
+    @apply bg-primary-900/50 backdrop-blur-sm border border-primary-800 rounded-2xl 
+           overflow-hidden transition-all duration-500;
+  }
+  
+  .card-hover {
+    @apply hover:border-accent/50 hover:shadow-xl hover:shadow-accent/5 
+           hover:-translate-y-1;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 bg-primary-900 border border-primary-700 rounded-lg
+           text-primary-100 placeholder-primary-500
+           focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/50
+           transition-all duration-300;
+  }
+  
+  .select-field {
+    @apply w-full px-4 py-3 bg-primary-900 border border-primary-700 rounded-lg
+           text-primary-100 cursor-pointer
+           focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/50
+           transition-all duration-300;
+  }
+  
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/70 backdrop-blur-sm z-50 
+           flex items-center justify-center p-4;
+  }
+  
+  .modal-content {
+    @apply bg-primary-900 border border-primary-700 rounded-2xl 
+           w-full max-w-lg max-h-[90vh] overflow-y-auto
+           animate-scale-in;
+  }
+  
+  .table-header {
+    @apply px-6 py-4 text-left text-sm font-medium text-primary-400 uppercase tracking-wider;
+  }
+  
+  .table-cell {
+    @apply px-6 py-4 text-sm text-primary-200;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent-light via-accent to-accent-dark 
+           bg-clip-text text-transparent;
+  }
+  
+  .bg-gradient-radial {
+    background: radial-gradient(ellipse at top, rgba(196, 167, 125, 0.1) 0%, transparent 50%);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #171717;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #525252;
+}
