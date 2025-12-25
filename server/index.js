@@ -24,6 +24,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/projects', projectRoutes);
 app.use('/api/categories', categoryRoutes);
 
+// Root route
+app.get('/', (req, res) => {
+    res.json({ message: 'Welcome to AIDY API' });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', message: 'Server is running' });
