@@ -126,18 +126,50 @@ export default function Home() {
                                     onClick={() => setSelectedProject(project)}
                                 >
                                     <div className="aspect-[4/3] relative overflow-hidden">
-                                        {project.image_url ? (
-                                            <img
-                                                src={project.image_url.startsWith('http') ? project.image_url : `http://localhost:5000${project.image_url}`}
-                                                alt={project.title}
-                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full bg-primary-800 flex items-center justify-center">
-                                                <span className="text-6xl">🏛️</span>
-                                            </div>
-                                        )}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-primary-950 via-transparent to-transparent opacity-60"></div>
+                                        {(() => {
+                                            const url = project.image_url;
+                                            if (!url) {
+                                                return (
+                                                    <div className="w-full h-full bg-primary-800 flex items-center justify-center">
+                                                        <span className="text-6xl">🏛️</span>
+                                                    </div>
+                                                );
+                                            }
+
+                                            const isVideo = url.match(/\.(mp4|webm|mov)$/i);
+                                            const fullUrl = url.startsWith('http') ? url : `http://localhost:5000${url}`;
+
+                                            // Ensure we get a static image for the card
+                                            const displayUrl = isVideo
+                                                ? fullUrl.replace(/\.(mp4|webm|mov)$/i, '.jpg')
+                                                : fullUrl;
+
+                                            return (
+                                                <>
+                                                    <img
+                                                        src={displayUrl}
+                                                        alt={project.title}
+                                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                                        onError={(e) => {
+                                                            // Fallback if video thumbnail generation fails
+                                                            e.target.onerror = null;
+                                                            if (isVideo) {
+                                                                // Show video player as last resort or placeholder
+                                                                e.target.style.display = 'none';
+                                                                e.target.parentNode.classList.add('bg-black');
+                                                            }
+                                                        }}
+                                                    />
+                                                    {isVideo && (
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                            <div className="w-12 h-12 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 shadow-lg">
+                                                                <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-white border-b-[8px] border-b-transparent ml-1"></div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                         <div className="absolute bottom-0 left-0 right-0 p-5">
                                             <span className="inline-block px-3 py-1 bg-accent/20 text-accent text-xs font-medium rounded-full mb-2">
                                                 {project.category}

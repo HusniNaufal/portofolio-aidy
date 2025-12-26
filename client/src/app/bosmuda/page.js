@@ -414,12 +414,32 @@ export default function AdminPage() {
                                         <tr key={project.id} className="group hover:bg-primary-50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-lg bg-primary-100 overflow-hidden flex-shrink-0">
-                                                        {project.image_url ? (
-                                                            <img src={project.image_url.startsWith('http') ? project.image_url : `http://localhost:5000${project.image_url}`} alt="" className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-primary-400">🏛️</div>
-                                                        )}
+                                                    <div className="w-12 h-12 rounded-lg bg-primary-100 overflow-hidden flex-shrink-0 relative">
+                                                        {(() => {
+                                                            const url = project.image_url;
+                                                            if (!url) {
+                                                                return <div className="w-full h-full flex items-center justify-center text-primary-400">🏛️</div>;
+                                                            }
+                                                            const isVideo = url.match(/\.(mp4|webm|mov)$/i);
+                                                            const fullUrl = url.startsWith('http') ? url : `http://localhost:5000${url}`;
+                                                            const displayUrl = isVideo ? fullUrl.replace(/\.(mp4|webm|mov)$/i, '.jpg') : fullUrl;
+
+                                                            return (
+                                                                <>
+                                                                    <img
+                                                                        src={displayUrl}
+                                                                        alt=""
+                                                                        className="w-full h-full object-cover"
+                                                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                                                    />
+                                                                    {isVideo && (
+                                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                                                            <span className="text-[10px] text-white bg-black/50 px-1 rounded">▶</span>
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            );
+                                                        })()}
                                                     </div>
                                                     <div>
                                                         <h4 className="font-medium text-primary-900 group-hover:text-accent transition-colors">{project.title}</h4>
