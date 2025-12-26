@@ -30,15 +30,23 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST new project
-router.post('/', handleUpload('image'), async (req, res) => {
+router.post('/', handleUpload('media'), async (req, res) => {
     try {
         const { title, description, category } = req.body;
-        // Cloudinary puts the url in req.file.path
-        const image_url = req.file ? req.file.path : null;
+
+        let media = [];
+        if (req.files && req.files.length > 0) {
+            media = req.files.map(file => file.path);
+        }
+
+        // Set image_url to the first media item for backward compatibility
+        // If the first item is a video, we might want to use a placeholder or the video url itself
+        // for now, we just use the first item url.
+        const image_url = media.length > 0 ? media[0] : null;
 
         const [result] = await pool.query(
-            'INSERT INTO projects (title, description, image_url, category) VALUES (?, ?, ?, ?)',
-            [title, description, image_url, category || 'Perumahan']
+            'INSERT INTO projects (title, description, image_url, media, category) VALUES (?, ?, ?, ?, ?)',
+            [title, description, image_url, JSON.stringify(media), category || 'Perumahan']
         );
 
         const [newProject] = await pool.query('SELECT * FROM projects WHERE id = ?', [result.insertId]);
@@ -50,9 +58,9 @@ router.post('/', handleUpload('image'), async (req, res) => {
 });
 
 // PUT update project
-router.put('/:id', handleUpload('image'), async (req, res) => {
+router.put('/:id', handleUpload('media'), async (req, res) => {
     try {
-        const { title, description, category } = req.body;
+        const { title, description, category, existing_media } = req.body;
         const projectId = req.params.id;
 
         // Get existing project
@@ -61,17 +69,29 @@ router.put('/:id', handleUpload('image'), async (req, res) => {
             return res.status(404).json({ error: 'Project not found' });
         }
 
-        let image_url = existing[0].image_url;
+        let media = [];
 
-        // If new image uploaded, use the new Cloudinary URL
-        if (req.file) {
-            image_url = req.file.path;
-            // TODO: Optional - Delete old image from Cloudinary using API
+        // Handle existing media (can be a string or array of strings)
+        if (existing_media) {
+            if (Array.isArray(existing_media)) {
+                media = existing_media;
+            } else {
+                media = [existing_media];
+            }
         }
 
+        // Add new files
+        if (req.files && req.files.length > 0) {
+            media = [...media, ...req.files.map(file => file.path)];
+        }
+
+
+
+        const image_url = media.length > 0 ? media[0] : null;
+
         await pool.query(
-            'UPDATE projects SET title = ?, description = ?, image_url = ?, category = ? WHERE id = ?',
-            [title, description, image_url, category, projectId]
+            'UPDATE projects SET title = ?, description = ?, image_url = ?, media = ?, category = ? WHERE id = ?',
+            [title, description, image_url, JSON.stringify(media), category, projectId]
         );
 
         const [updated] = await pool.query('SELECT * FROM projects WHERE id = ?', [projectId]);

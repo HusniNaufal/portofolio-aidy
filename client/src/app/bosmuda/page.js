@@ -19,9 +19,11 @@ export default function AdminPage() {
         title: '',
         description: '',
         category: '',
-        image: null
     });
-    const [imagePreview, setImagePreview] = useState(null);
+    const [existingMedia, setExistingMedia] = useState([]);
+    const [newFiles, setNewFiles] = useState([]);
+    const [previews, setPreviews] = useState([]); // { url, type, isNew, file }
+
     const [submitting, setSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState(null);
 
@@ -31,6 +33,40 @@ export default function AdminPage() {
     const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState(null);
     const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
     const [addingCategory, setAddingCategory] = useState(false);
+    const [showQuickAddCategory, setShowQuickAddCategory] = useState(false);
+
+    // Update previews when existingMedia or newFiles change
+    useEffect(() => {
+        const newPreviews = [];
+
+        // Existing media
+        existingMedia.forEach(url => {
+            const isVideo = url.match(/\.(mp4|webm|mov)$/i);
+            newPreviews.push({
+                url: url.startsWith('http') ? url : `${API_URL.replace('/api', '')}${url}`,
+                type: isVideo ? 'video' : 'image',
+                isNew: false
+            });
+        });
+
+        // New files
+        newFiles.forEach(file => {
+            const isVideo = file.type.startsWith('video/');
+            newPreviews.push({
+                url: URL.createObjectURL(file),
+                type: isVideo ? 'video' : 'image',
+                isNew: true,
+                file: file
+            });
+        });
+
+        setPreviews(newPreviews);
+
+        // Cleanup object URLs to avoid leaks
+        return () => {
+            newPreviews.filter(p => p.isNew).forEach(p => URL.revokeObjectURL(p.url));
+        }
+    }, [existingMedia, newFiles]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -94,6 +130,36 @@ export default function AdminPage() {
         }
     };
 
+    const handleQuickAddCategory = async (e) => {
+        e.preventDefault();
+        if (!newCategoryName.trim()) return;
+
+        setAddingCategory(true);
+        setCategoryError(null);
+
+        try {
+            const res = await fetch(`${API_URL}/categories`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newCategoryName.trim() })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                await fetchCategories();
+                setFormData(prev => ({ ...prev, category: newCategoryName.trim() }));
+                setNewCategoryName('');
+                setShowQuickAddCategory(false);
+            } else {
+                setCategoryError(data.error || 'Gagal menambah kategori');
+            }
+        } catch (err) {
+            setCategoryError('Kesalahan koneksi');
+        } finally {
+            setAddingCategory(false);
+        }
+    };
+
     const handleDeleteCategory = async (id) => {
         try {
             const res = await fetch(`${API_URL}/categories/${id}`, { method: 'DELETE' });
@@ -119,7 +185,16 @@ export default function AdminPage() {
             data.append('title', formData.title);
             data.append('description', formData.description);
             data.append('category', formData.category);
-            if (formData.image) data.append('image', formData.image);
+
+            // Append new files
+            newFiles.forEach(file => {
+                data.append('media', file);
+            });
+
+            // Append existing media URLs
+            existingMedia.forEach(url => {
+                data.append('existing_media', url);
+            });
 
             const url = editingProject ? `${API_URL}/projects/${editingProject.id}` : `${API_URL}/projects`;
             const method = editingProject ? 'PUT' : 'POST';
@@ -133,7 +208,7 @@ export default function AdminPage() {
                 setErrorMessage(err.error || 'Gagal menyimpan');
             }
         } catch (err) {
-            setErrorMessage('Kesalahan koneksi');
+            setErrorMessage('Kesalahan koneksi: ' + err.message);
         } finally {
             setSubmitting(false);
         }
@@ -160,18 +235,28 @@ export default function AdminPage() {
                 title: project.title,
                 description: project.description || '',
                 category: project.category,
-                image: null
             });
-            setImagePreview(project.image_url ? (project.image_url.startsWith('http') ? project.image_url : `http://localhost:5000${project.image_url}`) : null);
+
+            // Handle legacy image_url and new media array
+            let mediaList = [];
+            if (project.media) {
+                // media might be JSON string or array depending on how backend sends it (usually JSON decoded by axios/fetch if headers set, but here standard fetch)
+                // If using mysql2 with JSON column, it's usually an object/array already.
+                mediaList = typeof project.media === 'string' ? JSON.parse(project.media) : project.media;
+            } else if (project.image_url) {
+                mediaList = [project.image_url];
+            }
+            setExistingMedia(mediaList || []);
+            setNewFiles([]);
         } else {
             setEditingProject(null);
             setFormData({
                 title: '',
                 description: '',
                 category: categories[0]?.name || '',
-                image: null
             });
-            setImagePreview(null);
+            setExistingMedia([]);
+            setNewFiles([]);
         }
         setShowModal(true);
     };
@@ -180,13 +265,26 @@ export default function AdminPage() {
         setShowModal(false);
         setEditingProject(null);
         setErrorMessage(null);
+        setExistingMedia([]);
+        setNewFiles([]);
     };
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setFormData({ ...formData, image: file });
-            setImagePreview(URL.createObjectURL(file));
+    const handleFileChange = (e) => {
+        if (e.target.files) {
+            const filesArray = Array.from(e.target.files);
+            setNewFiles(prev => [...prev, ...filesArray]);
+        }
+    };
+
+    const removeMedia = (index) => {
+        // We know that previews are ordered: existing first, then new
+        if (index < existingMedia.length) {
+            // Removing existing
+            setExistingMedia(prev => prev.filter((_, i) => i !== index));
+        } else {
+            // Removing new
+            const newIndex = index - existingMedia.length;
+            setNewFiles(prev => prev.filter((_, i) => i !== newIndex));
         }
     };
 
@@ -450,31 +548,99 @@ export default function AdminPage() {
                                             <option key={cat.id} value={cat.name}>{cat.name}</option>
                                         ))}
                                     </select>
+                                    {!showQuickAddCategory ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowQuickAddCategory(true)}
+                                            className="text-xs text-accent mt-2 hover:underline font-medium flex items-center gap-1"
+                                        >
+                                            <span>+</span> Add New Category
+                                        </button>
+                                    ) : (
+                                        <div className="mt-2 flex gap-2 animate-fade-in">
+                                            <input
+                                                type="text"
+                                                value={newCategoryName}
+                                                onChange={e => setNewCategoryName(e.target.value)}
+                                                placeholder="New category..."
+                                                className="flex-1 bg-white border border-primary-200 rounded px-2 py-1 text-xs focus:border-accent focus:outline-none text-primary-900"
+                                                autoFocus
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleQuickAddCategory}
+                                                disabled={addingCategory}
+                                                className="px-3 py-1 bg-accent text-white rounded text-xs font-medium hover:bg-accent-dark transition-colors"
+                                            >
+                                                Add
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setShowQuickAddCategory(false);
+                                                    setNewCategoryName('');
+                                                    setCategoryError(null);
+                                                }}
+                                                className="px-2 py-1 text-primary-400 hover:text-primary-600 rounded text-xs transition-colors"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-primary-500 mb-1.5 uppercase tracking-wide">Image</label>
+                                    <label className="block text-xs font-medium text-primary-500 mb-1.5 uppercase tracking-wide">Media (Images & Video)</label>
                                     <div className="relative">
                                         <input
                                             type="file"
                                             id="modalImageInput"
                                             className="hidden"
-                                            accept="image/*"
-                                            onChange={handleImageChange}
+                                            accept="image/*,video/*"
+                                            multiple
+                                            onChange={handleFileChange}
                                         />
                                         <label
                                             htmlFor="modalImageInput"
                                             className="flex items-center justify-center gap-2 w-full h-[42px] px-4 bg-primary-50 border border-primary-200 rounded-lg cursor-pointer hover:border-primary-400 transition-colors text-sm text-primary-500 truncate hover:bg-primary-100"
                                         >
                                             <Upload className="w-4 h-4" />
-                                            {formData.image ? 'File Selected' : 'Choose File'}
+                                            {newFiles.length > 0 ? `${newFiles.length} New File(s)` : 'Add Files'}
                                         </label>
                                     </div>
                                 </div>
                             </div>
 
-                            {imagePreview && (
-                                <div className="h-40 bg-primary-50 rounded-lg border border-primary-200 overflow-hidden relative group">
-                                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                            {/* Previews Grid */}
+                            {previews.length > 0 && (
+                                <div className="grid grid-cols-3 gap-3">
+                                    {previews.map((item, index) => (
+                                        <div key={index} className="aspect-square bg-primary-50 rounded-lg border border-primary-200 overflow-hidden relative group">
+                                            {item.type === 'video' ? (
+                                                <video src={item.url} className="w-full h-full object-cover" muted />
+                                            ) : (
+                                                <img src={item.url} alt="Preview" className="w-full h-full object-cover" />
+                                            )}
+
+                                            {/* Remove Button */}
+                                            <button
+                                                type="button"
+                                                onClick={() => removeMedia(index)}
+                                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+                                            >
+                                                ✕
+                                            </button>
+
+                                            {/* Badge */}
+                                            {item.isNew && (
+                                                <span className="absolute bottom-1 left-1 bg-accent/80 text-white text-[10px] px-1.5 py-0.5 rounded-full">New</span>
+                                            )}
+                                            {item.type === 'video' && (
+                                                <span className="absolute flex items-center justify-center inset-0 pointer-events-none">
+                                                    <span className="bg-black/30 backdrop-blur-sm p-1.5 rounded-full text-white">▶</span>
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             )}
 

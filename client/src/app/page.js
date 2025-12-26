@@ -168,42 +168,122 @@ export default function Home() {
                     onClick={() => setSelectedProject(null)}
                 >
                     <div
-                        className="modal-content max-w-3xl"
+                        className="modal-content max-w-4xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="aspect-video relative">
-                            {selectedProject.image_url ? (
-                                <img
-                                    src={selectedProject.image_url.startsWith('http') ? selectedProject.image_url : `http://localhost:5000${selectedProject.image_url}`}
-                                    alt={selectedProject.title}
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <div className="w-full h-full bg-primary-800 flex items-center justify-center">
-                                    <span className="text-8xl">🏛️</span>
-                                </div>
-                            )}
-                        </div>
-                        <div className="p-6">
-                            <span className="inline-block px-3 py-1 bg-accent/20 text-accent text-sm font-medium rounded-full mb-3">
-                                {selectedProject.category}
-                            </span>
-                            <h2 className="text-2xl font-display font-semibold mb-4">
-                                {selectedProject.title}
-                            </h2>
-                            <p className="text-primary-400 leading-relaxed">
-                                {selectedProject.description || 'Deskripsi belum tersedia.'}
-                            </p>
-                            <button
-                                onClick={() => setSelectedProject(null)}
-                                className="mt-6 btn-secondary w-full"
-                            >
-                                Tutup
-                            </button>
-                        </div>
+                        <ProjectCarousel project={selectedProject} onClose={() => setSelectedProject(null)} />
                     </div>
                 </div>
             )}
         </main>
+    );
+}
+
+function ProjectCarousel({ project, onClose }) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    // Parse media
+    const mediaList = project.media
+        ? (typeof project.media === 'string' ? JSON.parse(project.media) : project.media)
+        : (project.image_url ? [project.image_url] : []);
+
+    const hasMedia = mediaList.length > 0;
+
+    const nextSlide = () => {
+        setCurrentIndex((prev) => (prev + 1) % mediaList.length);
+    };
+
+    const prevSlide = () => {
+        setCurrentIndex((prev) => (prev - 1 + mediaList.length) % mediaList.length);
+    };
+
+    // Auto-detect type based on extension (simple check)
+    const isVideo = (url) => url.match(/\.(mp4|webm|mov)$/i);
+
+    return (
+        <div>
+            <div className="aspect-video relative bg-black group">
+                {hasMedia ? (
+                    (() => {
+                        const url = mediaList[currentIndex];
+                        const fullUrl = url.startsWith('http') ? url : `http://localhost:5000${url}`;
+                        return isVideo(url) ? (
+                            <video
+                                src={fullUrl}
+                                className="w-full h-full object-contain"
+                                controls
+                                autoPlay
+                            />
+                        ) : (
+                            <img
+                                src={fullUrl}
+                                alt={project.title}
+                                className="w-full h-full object-contain"
+                            />
+                        );
+                    })()
+                ) : (
+                    <div className="w-full h-full bg-primary-800 flex items-center justify-center">
+                        <span className="text-8xl">🏛️</span>
+                    </div>
+                )}
+
+                {/* Navigation Buttons */}
+                {mediaList.length > 1 && (
+                    <>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); prevSlide(); }}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                            ←
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); nextSlide(); }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                            →
+                        </button>
+
+                        {/* Dots */}
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                            {mediaList.map((_, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={(e) => { e.stopPropagation(); setCurrentIndex(idx); }}
+                                    className={`w-2 h-2 rounded-full transition-all ${idx === currentIndex ? 'bg-white w-4' : 'bg-white/50'
+                                        }`}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
+
+            <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                    <div>
+                        <span className="inline-block px-3 py-1 bg-accent/20 text-accent text-sm font-medium rounded-full mb-3">
+                            {project.category}
+                        </span>
+                        <h2 className="text-2xl font-display font-semibold">
+                            {project.title}
+                        </h2>
+                    </div>
+                    {/* Close button (top right of content, typically users look for x) */}
+                </div>
+
+                <p className="text-primary-400 leading-relaxed max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                    {project.description || 'Deskripsi belum tersedia.'}
+                </p>
+                <div className="flex justify-end mt-6">
+                    <button
+                        onClick={onClose}
+                        className="px-6 py-2 bg-primary-800 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                    >
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
