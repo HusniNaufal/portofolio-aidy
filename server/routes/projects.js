@@ -30,18 +30,12 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST new project
-router.post('/', handleUpload('media'), async (req, res) => {
+router.post('/', async (req, res) => {
     try {
-        const { title, description, category } = req.body;
+        const { title, description, category, media_urls } = req.body;
 
-        let media = [];
-        if (req.files && req.files.length > 0) {
-            media = req.files.map(file => file.path);
-        }
-
-        // Set image_url to the first media item for backward compatibility
-        // If the first item is a video, we might want to use a placeholder or the video url itself
-        // for now, we just use the first item url.
+        // media_urls is an array of Cloudinary URLs from frontend
+        const media = Array.isArray(media_urls) ? media_urls : (media_urls ? [media_urls] : []);
         const image_url = media.length > 0 ? media[0] : null;
 
         const [result] = await pool.query(
@@ -58,9 +52,9 @@ router.post('/', handleUpload('media'), async (req, res) => {
 });
 
 // PUT update project
-router.put('/:id', handleUpload('media'), async (req, res) => {
+router.put('/:id', async (req, res) => {
     try {
-        const { title, description, category, existing_media } = req.body;
+        const { title, description, category, media_urls } = req.body;
         const projectId = req.params.id;
 
         // Get existing project
@@ -69,24 +63,8 @@ router.put('/:id', handleUpload('media'), async (req, res) => {
             return res.status(404).json({ error: 'Project not found' });
         }
 
-        let media = [];
-
-        // Handle existing media (can be a string or array of strings)
-        if (existing_media) {
-            if (Array.isArray(existing_media)) {
-                media = existing_media;
-            } else {
-                media = [existing_media];
-            }
-        }
-
-        // Add new files
-        if (req.files && req.files.length > 0) {
-            media = [...media, ...req.files.map(file => file.path)];
-        }
-
-
-
+        // media_urls is the complete array from frontend (existing + new uploaded URLs)
+        const media = Array.isArray(media_urls) ? media_urls : (media_urls ? [media_urls] : []);
         const image_url = media.length > 0 ? media[0] : null;
 
         await pool.query(

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Upload } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'YOUR_CLOUD_NAME';
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'YOUR_UPLOAD_PRESET';
 
 export default function AdminPage() {
     const [projects, setProjects] = useState([]);
@@ -26,6 +28,8 @@ export default function AdminPage() {
 
     const [submitting, setSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState(null);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploading, setUploading] = useState(false);
 
     // Category Management
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -175,31 +179,71 @@ export default function AdminPage() {
         }
     };
 
+    // Upload file directly to Cloudinary
+    const uploadToCloudinary = async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+        formData.append('cloud_name', CLOUDINARY_CLOUD_NAME);
+
+        const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
+        const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+
+        const res = await fetch(uploadUrl, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error?.message || 'Upload failed');
+        }
+
+        const data = await res.json();
+        return data.secure_url;
+    };
+
     const handleSaveProject = async (e) => {
         e.preventDefault();
         setSubmitting(true);
+        setUploading(true);
         setErrorMessage(null);
+        setUploadProgress(0);
 
         try {
-            const data = new FormData();
-            data.append('title', formData.title);
-            data.append('description', formData.description);
-            data.append('category', formData.category);
+            // Step 1: Upload new files to Cloudinary
+            const newUrls = [];
+            if (newFiles.length > 0) {
+                for (let i = 0; i < newFiles.length; i++) {
+                    const file = newFiles[i];
+                    try {
+                        const url = await uploadToCloudinary(file);
+                        newUrls.push(url);
+                        setUploadProgress(Math.round(((i + 1) / newFiles.length) * 100));
+                    } catch (err) {
+                        throw new Error(`Failed to upload ${file.name}: ${err.message}`);
+                    }
+                }
+            }
 
-            // Append new files
-            newFiles.forEach(file => {
-                data.append('media', file);
-            });
+            // Step 2: Combine existing URLs + new URLs
+            const allMediaUrls = [...existingMedia, ...newUrls];
 
-            // Append existing media URLs
-            existingMedia.forEach(url => {
-                data.append('existing_media', url);
-            });
-
+            // Step 3: Send to backend (JSON only, no files)
             const url = editingProject ? `${API_URL}/projects/${editingProject.id}` : `${API_URL}/projects`;
             const method = editingProject ? 'PUT' : 'POST';
 
-            const res = await fetch(url, { method, body: data });
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: formData.title,
+                    description: formData.description,
+                    category: formData.category,
+                    media_urls: allMediaUrls
+                })
+            });
+
             if (res.ok) {
                 await fetchProjects();
                 closeModal();
@@ -208,9 +252,11 @@ export default function AdminPage() {
                 setErrorMessage(err.error || 'Gagal menyimpan');
             }
         } catch (err) {
-            setErrorMessage('Kesalahan koneksi: ' + err.message);
+            setErrorMessage('Kesalahan: ' + err.message);
         } finally {
             setSubmitting(false);
+            setUploading(false);
+            setUploadProgress(0);
         }
     };
 
@@ -675,6 +721,22 @@ export default function AdminPage() {
                                 />
                             </div>
 
+                            {/* Upload Progress */}
+                            {uploading && (
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-xs text-primary-500">
+                                        <span>Uploading to Cloudinary...</span>
+                                        <span>{uploadProgress}%</span>
+                                    </div>
+                                    <div className="w-full bg-primary-100 rounded-full h-2 overflow-hidden">
+                                        <div
+                                            className="bg-accent h-full transition-all duration-300 ease-out"
+                                            style={{ width: `${uploadProgress}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="pt-2 flex justify-end gap-3">
                                 <button
                                     type="button"
@@ -685,10 +747,10 @@ export default function AdminPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={submitting}
-                                    className="px-6 py-2.5 bg-accent text-white rounded-lg text-sm font-semibold hover:bg-accent-dark transition-colors shadow-lg shadow-accent/20"
+                                    disabled={submitting || uploading}
+                                    className="px-6 py-2.5 bg-accent text-white rounded-lg text-sm font-semibold hover:bg-accent-dark transition-colors shadow-lg shadow-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {submitting ? 'Saving...' : 'Save Project'}
+                                    {uploading ? `Uploading... ${uploadProgress}%` : submitting ? 'Saving...' : 'Save Project'}
                                 </button>
                             </div>
                         </form>
